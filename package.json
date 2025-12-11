@@ -16,7 +16,7 @@
     "@coinbase/x402": "*",
     "@google/genai": "^1.28.0",
     "@heroicons/react": "^2.2.0",
-    "next": "^15.2.4",
+    "next": "15.2.6",
     "openai": "^6.8.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
