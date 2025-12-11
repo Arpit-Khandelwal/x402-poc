@@ -36,5 +36,10 @@ export const middleware = paymentMiddleware(
 );
 
 export const config = {
-  matcher: ["/protected/:path*", "/protected/result/:path*", "/api/short/:path*", "/api/buy-credits/:path*"],
+  matcher: [
+    "/protected/:path*",
+    "/protected/result/:path*",
+    "/api/short/:path*",
+    "/api/buy-credits/:path*",
+  ],
 };
