@@ -53,7 +53,28 @@ export async function POST(request: NextRequest) {
         },
       );
 
-      paymentResponse = await middlewareFn(request);
+      // Fix: Force the correct public URL origin for POST requests too
+      let middlewareRequest = request;
+      if (process.env.NEXT_PUBLIC_APP_URL) {
+        const publicUrl = new URL(request.url);
+        const outputUrl = new URL(process.env.NEXT_PUBLIC_APP_URL);
+        publicUrl.protocol = outputUrl.protocol;
+        publicUrl.host = outputUrl.host;
+        publicUrl.port = outputUrl.port;
+
+        middlewareRequest = new NextRequest(publicUrl.toString(), {
+          headers: request.headers,
+          method: request.method,
+          body: request.body,
+        });
+
+        // Also override headers
+        middlewareRequest.headers.set("Host", outputUrl.host);
+        middlewareRequest.headers.set("X-Forwarded-Host", outputUrl.host);
+        middlewareRequest.headers.set("X-Forwarded-Proto", outputUrl.protocol.replace(":", ""));
+      }
+
+      paymentResponse = await middlewareFn(middlewareRequest);
 
       if (
         paymentResponse &&
@@ -157,6 +178,28 @@ export async function GET(request: NextRequest) {
       console.log("[DEBUG] GET /api/chat - Found paymentToken, verifying for /chat resource");
       middlewareRequest = new NextRequest(processingUrl.toString(), {
         headers: headers,
+      });
+    }
+
+    // Fix: Force the correct public URL origin for GET requests too
+    if (process.env.NEXT_PUBLIC_APP_URL) {
+      const publicUrl = new URL(middlewareRequest.url);
+      const outputUrl = new URL(process.env.NEXT_PUBLIC_APP_URL);
+      publicUrl.protocol = outputUrl.protocol;
+      publicUrl.host = outputUrl.host;
+      publicUrl.port = outputUrl.port;
+
+      console.log(`[DEBUG] Fixing URL: ${middlewareRequest.url} -> ${publicUrl.toString()}`);
+
+      const newHeaders = new Headers(middlewareRequest.headers);
+      newHeaders.set("Host", outputUrl.host);
+      newHeaders.set("X-Forwarded-Host", outputUrl.host);
+      newHeaders.set("X-Forwarded-Proto", outputUrl.protocol.replace(":", ""));
+
+      middlewareRequest = new NextRequest(publicUrl.toString(), {
+        headers: newHeaders,
+        method: middlewareRequest.method,
+        body: middlewareRequest.body,
       });
     }
 

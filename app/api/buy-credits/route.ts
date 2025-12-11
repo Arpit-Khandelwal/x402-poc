@@ -57,6 +57,28 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // Fix: Force the correct public URL origin if available (fixes localhost redirect issues)
+    if (process.env.NEXT_PUBLIC_APP_URL) {
+      const publicUrl = new URL(middlewareRequest.url);
+      const outputUrl = new URL(process.env.NEXT_PUBLIC_APP_URL);
+      publicUrl.protocol = outputUrl.protocol;
+      publicUrl.host = outputUrl.host;
+      publicUrl.port = outputUrl.port;
+
+      console.log(`[DEBUG] Fixing URL: ${middlewareRequest.url} -> ${publicUrl.toString()}`);
+
+      const newHeaders = new Headers(middlewareRequest.headers);
+      newHeaders.set("Host", outputUrl.host);
+      newHeaders.set("X-Forwarded-Host", outputUrl.host);
+      newHeaders.set("X-Forwarded-Proto", outputUrl.protocol.replace(":", ""));
+
+      middlewareRequest = new NextRequest(publicUrl.toString(), {
+        headers: newHeaders,
+        method: middlewareRequest.method,
+        body: middlewareRequest.body,
+      });
+    }
+
     const paymentResponse = await middlewareFn(middlewareRequest);
 
     // If payment is required (402), return it (this renders the paywall/redirect)
