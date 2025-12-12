@@ -3,6 +3,7 @@ import { NextResponse, NextRequest } from "next/server";
 import { cookies } from "next/headers";
 import { Address } from "viem";
 import { Network, paymentMiddleware, Resource } from "x402-next";
+import { getAppUrl } from "../../../lib/url";
 
 const facilitatorUrl = process.env.NEXT_PUBLIC_FACILITATOR_URL as Resource;
 const payTo = process.env.RESOURCE_WALLET_ADDRESS as Address;
@@ -15,7 +16,8 @@ const network = process.env.NETWORK as Network;
  * @param request - The incoming request object.
  * @returns The JSON response or payment requirement.
  */
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest)
+{
   try {
     const { message } = await request.json();
     const cookieStore = await cookies();
@@ -54,10 +56,12 @@ export async function POST(request: NextRequest) {
       );
 
       // Fix: Force the correct public URL origin for POST requests too
+      const appUrl = getAppUrl(request);
       let middlewareRequest = request;
-      if (process.env.NEXT_PUBLIC_APP_URL) {
+
+      if (appUrl) {
         const publicUrl = new URL(request.url);
-        const outputUrl = new URL(process.env.NEXT_PUBLIC_APP_URL);
+        const outputUrl = new URL(appUrl);
         publicUrl.protocol = outputUrl.protocol;
         publicUrl.host = outputUrl.host;
         publicUrl.port = outputUrl.port;
@@ -132,7 +136,8 @@ export async function POST(request: NextRequest) {
  * @param request - The incoming request.
  * @returns Redirect to /chat on success, or Paywall HTML on 402.
  */
-export async function GET(request: NextRequest) {
+export async function GET(request: NextRequest)
+{
   try {
     // Check for paymentToken in query params (redirected from facilitator)
     const url = new URL(request.url);
@@ -182,9 +187,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Fix: Force the correct public URL origin for GET requests too
-    if (process.env.NEXT_PUBLIC_APP_URL) {
+    const appUrl = getAppUrl(request);
+    if (appUrl) {
       const publicUrl = new URL(middlewareRequest.url);
-      const outputUrl = new URL(process.env.NEXT_PUBLIC_APP_URL);
+      const outputUrl = new URL(appUrl);
       publicUrl.protocol = outputUrl.protocol;
       publicUrl.host = outputUrl.host;
       publicUrl.port = outputUrl.port;
@@ -245,7 +251,8 @@ export async function GET(request: NextRequest) {
       return nextResponse;
     } else {
       // User landed here via redirect, send them to the UI
-      const redirectUrl = new URL("/chat", request.url);
+      const baseUrl = getAppUrl(request) || request.url;
+      const redirectUrl = new URL("/chat", baseUrl);
       // Preserve token in URL just in case client needs it too, though cookie is set
       if (paymentToken) {
         redirectUrl.searchParams.set("paymentToken", paymentToken);
@@ -254,7 +261,8 @@ export async function GET(request: NextRequest) {
 
       // Copy cookies from nextResponse to redirectResponse
       const cookies = nextResponse.cookies.getAll();
-      cookies.forEach(cookie => {
+      cookies.forEach(cookie =>
+      {
         redirectResponse.cookies.set(cookie.name, cookie.value, {
           ...cookie,
           // Next.js cookies getAll returns strict objects, specific settings might need explicit pass

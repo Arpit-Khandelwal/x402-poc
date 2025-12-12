@@ -1,6 +1,7 @@
-import { NextResponse, NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { Address } from "viem";
 import { Network, paymentMiddleware, Resource } from "x402-next";
+import { getAppUrl } from "../../../lib/url";
 
 const facilitatorUrl = process.env.NEXT_PUBLIC_FACILITATOR_URL as Resource;
 const payTo = process.env.RESOURCE_WALLET_ADDRESS as Address;
@@ -13,7 +14,8 @@ const network = process.env.NETWORK as Network;
  * @param request - The incoming request.
  * @returns Redirect to /chat on success, or Paywall HTML (redirect to facilitator) on 402.
  */
-export async function GET(request: NextRequest) {
+export async function GET(request: NextRequest)
+{
   try {
     // Check for paymentToken in query params (redirected from facilitator)
     const url = new URL(request.url);
@@ -58,9 +60,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Fix: Force the correct public URL origin if available (fixes localhost redirect issues)
-    if (process.env.NEXT_PUBLIC_APP_URL) {
+    const appUrl = getAppUrl(request);
+    if (appUrl) {
       const publicUrl = new URL(middlewareRequest.url);
-      const outputUrl = new URL(process.env.NEXT_PUBLIC_APP_URL);
+      const outputUrl = new URL(appUrl);
       publicUrl.protocol = outputUrl.protocol;
       publicUrl.host = outputUrl.host;
       publicUrl.port = outputUrl.port;
@@ -93,7 +96,8 @@ export async function GET(request: NextRequest) {
     // Authentication/Payment Successful
 
     // Grant credits
-    const nextResponse = NextResponse.redirect(new URL("/chat", request.url));
+    const baseUrl = getAppUrl(request) || request.url;
+    const nextResponse = NextResponse.redirect(new URL("/chat", baseUrl));
 
     nextResponse.cookies.set("message_credits", "5", {
       httpOnly: false,
